@@ -12,3 +12,6 @@
 /captures
 .externalNativeBuild
 *~
+
+keystore.properties
+keystores/

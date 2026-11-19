@@ -2,6 +2,7 @@ package net.typeblog.socks.util;
 
 import android.content.Context;
 import android.content.Intent;
+import android.os.Build;
 import android.util.Log;
 
 import java.io.File;
@@ -112,6 +113,19 @@ public class Utility {
     }
 
     public static void startVpn(Context context, Profile profile) {
+        // Android 8+ : background callers (e.g. BootReceiver) are not allowed to
+        // call startService(); must go through startForegroundService(). The
+        // service calls startForeground() at the top of onStartCommand(), so the
+        // foreground-service contract is satisfied.
+        if (Build.VERSION.SDK_INT >= 26) {
+            context.startForegroundService(startVpnIntent(context, profile));
+        } else {
+            context.startService(startVpnIntent(context, profile));
+        }
+    }
+
+    /** Build the explicit start intent carrying the full profile as extras. */
+    public static Intent startVpnIntent(Context context, Profile profile) {
         Intent i = new Intent(context, SocksVpnService.class)
                 .putExtra(INTENT_NAME, profile.getName())
                 .putExtra(INTENT_SERVER, profile.getServer())
@@ -136,6 +150,58 @@ public class Utility {
             i.putExtra(INTENT_UDP_GW, profile.getUDPGW());
         }
 
-        context.startService(i);
+        return i;
+    }
+
+    /**
+     * Same as {@link #killPidFile(String)}, but waits until the process is
+     * really gone (polls /proc/&lt;pid&gt; for up to ~2s) and escalates to
+     * SIGKILL if needed. Prevents the old pdnsd/tun2socks from racing the
+     * newly started ones (pdnsd would fail to bind its 8091 port).
+     */
+    public static void killPidFileWait(String f) {
+        File file = new File(f);
+
+        if (!file.exists()) {
+            return;
+        }
+
+        int pid = -1;
+        InputStream i;
+        try {
+            i = new FileInputStream(file);
+            byte[] buf = new byte[512];
+            int len;
+            StringBuilder str = new StringBuilder();
+            while ((len = i.read(buf, 0, 512)) > 0) {
+                str.append(new String(buf, 0, len));
+            }
+            i.close();
+            pid = Integer.parseInt(str.toString().trim().replace("\n", ""));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        if (pid > 0) {
+            try {
+                Runtime.getRuntime().exec("kill " + pid).waitFor();
+
+                // Wait up to ~2s for the process to disappear
+                File proc = new File("/proc/" + pid);
+                for (int t = 0; t < 20 && proc.exists(); t++) {
+                    Thread.sleep(100);
+                }
+
+                if (proc.exists()) {
+                    Runtime.getRuntime().exec("kill -9 " + pid).waitFor();
+                    Thread.sleep(300);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        if(!file.delete())
+            Log.w(TAG, "failed to delete pidfile");
     }
 }

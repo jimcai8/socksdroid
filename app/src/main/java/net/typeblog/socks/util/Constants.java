@@ -20,6 +20,20 @@ public class Constants
             INTENT_IPV6_PROXY = INTENT_PREFIX + "IPV6",
             INTENT_UDP_GW = INTENT_PREFIX + "UDPGW";
 
+    // ControlReceiver actions & extras (adb shell am broadcast interface)
+    public static final String ACTION_CONNECT = "net.typeblog.socks.ACTION_CONNECT",
+            ACTION_DISCONNECT = "net.typeblog.socks.ACTION_DISCONNECT",
+            ACTION_STATUS = "net.typeblog.socks.ACTION_STATUS";
+    public static final String EXTRA_PROXY = "proxy",
+            EXTRA_SERVER = "server",
+            EXTRA_PORT = "port",
+            EXTRA_USERNAME = "username",
+            EXTRA_PASSWORD = "password",
+            EXTRA_ROUTE = "route",
+            EXTRA_DNS = "dns",
+            EXTRA_DNS_PORT = "dnsport",
+            EXTRA_AUTO = "auto";
+
     public static final String PREF = "profile",
             PREF_PROFILE = "profile",
             PREF_LAST_PROFILE = "last_profile",

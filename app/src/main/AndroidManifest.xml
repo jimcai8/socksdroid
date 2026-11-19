@@ -37,11 +37,27 @@
             </intent-filter>
         </service>
 
+        <!-- BOOT_COMPLETED is a protected broadcast, only the system can send
+             it; exported="true" is the documented-correct form and avoids
+             delivery quirks on some images. -->
         <receiver
             android:name=".BootReceiver"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED"/>
+            </intent-filter>
+        </receiver>
+
+        <!-- Shell/adb control interface. Sender must hold WRITE_SECURE_SETTINGS
+             (the adb shell uid does; ordinary apps cannot). -->
+        <receiver
+            android:name=".ControlReceiver"
+            android:exported="true"
+            android:permission="android.permission.WRITE_SECURE_SETTINGS">
+            <intent-filter>
+                <action android:name="net.typeblog.socks.ACTION_CONNECT"/>
+                <action android:name="net.typeblog.socks.ACTION_DISCONNECT"/>
+                <action android:name="net.typeblog.socks.ACTION_STATUS"/>
             </intent-filter>
         </receiver>
     </application>
