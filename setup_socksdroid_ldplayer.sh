@@ -35,9 +35,9 @@ export MSYS_NO_PATHCONV=1
 
 # ===================== constants (edit as needed) =====================
 declare -A EMULATOR_PROFILES=(
-  ["test"]="socks5://1.2.3.4:1080"
-  # ["instance-1"]="socks5://user:pass@ip:port"
-  # ["instance-2"]="socks5://user:pass@ip:port"
+  ["instance-1"]="socks5://1.2.3.4:1080"
+
+  # ["test"]="socks5://1.2.3.4:1080"
 )
 PKG="net.typeblog.socks"
 APK_GLOB='socksdroid*.apk'   # apk file in current dir
@@ -61,7 +61,12 @@ wait_boot() {  # $1 = serial
     "$ADB" connect "$serial" >/dev/null 2>&1
     boot="$("$ADB" -s "$serial" shell getprop sys.boot_completed 2>/dev/null | tr -d '\r')"
     [ "$boot" = "1" ] && return 0
-    try=$((try + 1)); sleep 3
+    try=$((try + 1))
+    # heartbeat so a slow/broken boot never looks like a hang
+    if [ $((try % 10)) -eq 0 ]; then
+      echo "  ... still waiting for boot on $serial (${try}/${BOOT_TRIES}, boot_completed='${boot:-none}')"
+    fi
+    sleep 3
   done
   return 1
 }

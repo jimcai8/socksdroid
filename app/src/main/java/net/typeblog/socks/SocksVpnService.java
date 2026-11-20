@@ -45,6 +45,8 @@ public class SocksVpnService extends VpnService {
     private ParcelFileDescriptor mInterface;
     private boolean mRunning = false;
     private boolean mStarting = false;
+    private String mLastServer;
+    private int mLastPort = -1;
     private final IBinder mBinder = new VpnBinder();
 
     /** All parameters needed to bring the tunnel up; comes either from
@@ -130,6 +132,22 @@ public class SocksVpnService extends VpnService {
             return START_STICKY;
         }
 
+        if ((mRunning || mStarting) && hasServer) {
+            // Duplicate connect for the SAME server (e.g. a broadcast mirrored
+            // by the vendor's multi-instance sync service, or a repeated
+            // command): keep the running tunnel instead of tearing it down
+            // and racing ourselves. Only a genuinely different server/port
+            // triggers a hot reconnect.
+            String server = intent.getStringExtra(INTENT_SERVER);
+            int port = intent.getIntExtra(INTENT_PORT, 1080);
+            if (mLastServer != null && server != null
+                    && server.equals(mLastServer) && port == mLastPort) {
+                if (DEBUG)
+                    Log.d(TAG, "duplicate connect for " + server + ":" + port + ", ignoring");
+                return START_STICKY;
+            }
+        }
+
         mStarting = true;
         try {
             // Kill leftover tun2socks/pdnsd recorded in the pidfiles from a
@@ -142,6 +160,10 @@ public class SocksVpnService extends VpnService {
             // with null intent, or a parameterless ACTION_CONNECT) fall back to
             // the saved default profile.
             final Params p = hasServer ? Params.fromExtras(intent) : Params.fromProfile(this);
+
+            // Remember what we are connecting to, for duplicate suppression.
+            mLastServer = p.server;
+            mLastPort = p.port;
 
             startForeground(NOTIFICATION_ID, buildNotification(p.name));
 

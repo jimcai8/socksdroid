@@ -100,6 +100,18 @@ public class ControlReceiver extends BroadcastReceiver {
                 + " auth=" + p.isUserPw() + (p.isUserPw() ? " user=" + p.getUsername() + " password=***" : "")
                 + " route=" + p.getRoute() + " auto=" + p.autoConnect());
 
+        // On some images (e.g. LDPlayer / Android 9) establish() keeps failing
+        // after a FRESH install until VpnService.prepare() has returned null
+        // once for this package - the appops flag alone is not enough. Calling
+        // prepare() here performs that registration without any UI; with
+        // appops ACTIVATE_VPN already set to allow it simply returns null.
+        Intent prep = android.net.VpnService.prepare(context);
+        if (prep != null) {
+            Log.e(TAG, "VPN consent NOT granted; open the app once, or run: "
+                    + "adb shell appops set " + context.getPackageName() + " ACTIVATE_VPN allow");
+            return;
+        }
+
         startServiceSafely(context, Utility.startVpnIntent(context, p));
     }
 
